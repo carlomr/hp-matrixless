@@ -1,0 +1,73 @@
+
+  template<int dim> 
+  struct boundary_face
+  {
+      typename hp::DoFHandler<dim>::cell_iterator cell; 
+      typename hp::DoFHandler<dim>::face_iterator face; 
+      boundary_face( 
+	      typename hp::DoFHandler<dim>::cell_iterator c,
+	      typename hp::DoFHandler<dim>::face_iterator f
+	      ):cell(c), face(f){};
+  };
+
+
+  //template<int 2>
+  bool matching_faces (typename hp::DoFHandler<2>::face_iterator &  f1,
+			  typename hp::DoFHandler<2>::face_iterator & f2 )
+  {
+      Point<2> v1, v2;
+      std::array<double,  GeometryInfo<2>::vertices_per_face> distances;
+      std::array<unsigned int,  GeometryInfo<2>::vertices_per_face> non_match_comp;
+      unsigned int match_vert = 0;
+      for (unsigned int v=0; v < GeometryInfo<2>::vertices_per_face; ++v)
+      {
+	  v1 = f1->vertex(v);
+	  for (unsigned int vv=0; vv < GeometryInfo<2>::vertices_per_face; ++vv)
+	  {
+	      unsigned int match_dim = 0;
+	      v2 = f2->vertex(vv);
+	      std::array<bool, 2-1> match_comp;
+	      double dist;
+	      for(unsigned int k=0; k<2; ++k)
+	      {
+		  dist = std::fabs(v1[k]-v2[k]);
+		  if(dist<1e-10 )
+		  {
+		      match_comp[match_dim] = k;
+		      ++match_dim;
+		  }
+		  else
+		  {
+		      //tra due punti matching, questo succede una sola volta
+		      non_match_comp[v] = k;
+		      distances[v] = dist;
+		  }
+	      }
+	      
+	      //XXX: bisognerebbe controllare che le coordinate matching siano sempre le stess (sempre x e y o x e z etc.)
+	      if(match_dim == 2-1 )
+	      {
+		  //controllo che non siano collineari
+
+
+		  //distances[match_vert] = glob_dist;
+		  ++match_vert;
+		  break;
+	      }
+	  }
+	  
+      }
+      if(match_vert ==  GeometryInfo<2>::vertices_per_face )
+      {
+	  bool collinear = fabs(f1->vertex(1)(match_comp[0])- f1->vertex(2)(match_comp[0]));
+	  for(unsigned int k = 1; k< GeometryInfo<2>::vertices_per_face; ++k)
+	  {
+	      if(fabs(distances[k]-distances[k-1])>1e-10 || non_match_comp[k]!=non_match_comp[k-1]
+		      || collinear)
+		  return false;
+	  }
+	  return true;
+      }
+      else
+	  return false;
+  }
